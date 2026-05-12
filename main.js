@@ -25,10 +25,13 @@ app.whenReady().then(() => {
     process.exit(1);
   }
 
+  const scale = petConfig.scale || 0.5;
   const fw = petConfig.frameSize.width || 192;
   const fh = petConfig.frameSize.height || 208;
-  const winW = Math.max(210, fw + 18);
-  const winH = Math.max(230, fh + 22);
+  const cw = Math.round(fw * scale);
+  const ch = Math.round(fh * scale);
+  const winW = cw + 18;
+  const winH = ch + 22;
 
   petWindow = new BrowserWindow({
     width: winW,

@@ -6,6 +6,7 @@ const bubble = document.getElementById('speech-bubble');
 let petConfig = null;
 let spritesheet = new Image();
 let currentAnimation = null;
+let currentAnimName = 'idle';
 let currentFrameIndex = 0;
 let frameTimer = 0;
 let lastTime = 0;
@@ -20,6 +21,9 @@ fetch('../assets/pet.json')
   .then(res => res.json())
   .then(config => {
     petConfig = config;
+    const scale = config.scale || 0.5;
+    canvas.width = Math.round(config.frameSize.width * scale);
+    canvas.height = Math.round(config.frameSize.height * scale);
     spritesheet.src = '../assets/' + config.spritesheetPath;
     spritesheet.onload = () => {
       startAnimation('idle');
@@ -27,12 +31,22 @@ fetch('../assets/pet.json')
   })
   .catch(err => console.error('Failed to load pet config:', err));
 
+function showBubble(text, duration) {
+  bubble.textContent = text;
+  bubble.classList.add('show');
+  clearTimeout(bubble._timeout);
+  bubble._timeout = setTimeout(() => {
+    bubble.classList.remove('show');
+  }, duration || 4000);
+}
+
 function startAnimation(name) {
   if (!petConfig || !petConfig.animations[name]) {
     console.warn('Animation "' + name + '" not found');
     return;
   }
   currentAnimation = petConfig.animations[name];
+  currentAnimName = name;
   currentFrameIndex = 0;
   frameTimer = 0;
   lastTime = performance.now();
@@ -135,4 +149,15 @@ canvas.addEventListener('mousemove', (e) => {
 
 canvas.addEventListener('mouseup', () => {
   isDragging = false;
+});
+
+// Double-click to cycle animations
+canvas.addEventListener('dblclick', () => {
+  if (mousePassthrough || !petConfig) return;
+  const animList = Object.keys(petConfig.animations);
+  if (animList.length === 0) return;
+  const idx = animList.indexOf(currentAnimName);
+  const next = animList[(idx + 1) % animList.length];
+  startAnimation(next);
+  showBubble('→ ' + next, 1500);
 });
