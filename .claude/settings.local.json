@@ -21,7 +21,14 @@
       "Bash(node *)",
       "Bash(git init *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(git config *)",
+      "Bash(git -c http.proxy=\"\" -c https.proxy=\"\" push -u origin master)",
+      "Bash(git -c http.proxy= -c https.proxy= -c core.gitproxy= push -u origin master)",
+      "Bash(npm run *)",
+      "Bash(git commit *)"
     ]
   }
 }

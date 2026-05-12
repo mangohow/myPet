@@ -1,14 +1,43 @@
 {
   "name": "mcp-pet",
   "version": "1.0.0",
-  "private": true,
+  "description": "MCP Desktop Pet",
+  "author": "mangohow",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.mypet.coding-pet",
+    "productName": "MC桌宠",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "mcp-server.js",
+      "package.json",
+      "renderer/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [],
+    "win": {
+      "target": "portable",
+      "icon": null
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}.exe"
+    }
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.9.0",
-    "electron": "^28.3.3",
     "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^26.8.1"
   }
 }
