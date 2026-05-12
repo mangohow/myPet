@@ -12,7 +12,6 @@
   "build": {
     "appId": "com.mypet.coding-pet",
     "productName": "MC桌宠",
-    "asar": false,
     "directories": {
       "output": "release"
     },
@@ -23,6 +22,9 @@
       "package.json",
       "renderer/**/*",
       "assets/**/*"
+    ],
+    "asarUnpack": [
+      "assets/pet.json"
     ],
     "win": {
       "target": "dir",
