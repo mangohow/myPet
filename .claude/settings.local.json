@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node -e \"console.log\\('electron:', require\\('electron/package.json'\\).version\\); console.log\\('mcp-sdk:', require\\('@modelcontextprotocol/sdk/package.json'\\).version\\); console.log\\('express:', require\\('express/package.json'\\).version\\)\")",
+      "Bash(node -e \"process.stdin.resume\\(\\); let d=''; process.stdin.on\\('data',c=>d+=c\\); process.stdin.on\\('end',\\(\\)=>console.log\\(JSON.parse\\(d\\).version\\)\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(timeout 5 node -e ' *)",
+      "Bash(npm start *)",
+      "Bash(powershell *)",
+      "Bash(cmd.exe /c \"rmdir /s /q \\\\\"E:\\\\\\\\llm_project\\\\\\\\myPet\\\\\\\\node_modules\\\\\\\\electron\\\\\"\")",
+      "Bash(cmd.exe *)",
+      "Bash(npm cache *)",
+      "Bash(export ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\")",
+      "Bash(tasklist /FI \"IMAGENAME eq node.exe\" /FI \"IMAGENAME eq npm.exe\" /FI \"IMAGENAME eq electron.exe\")",
+      "Bash(handle64.exe -accepteula \"E:\\\\llm_project\\\\myPet\\\\node_modules\\\\electron\")",
+      "Bash(export ELECTRON_SKIP_BINARY_DOWNLOAD=true)",
+      "Bash(npx electron *)",
+      "Bash(node node_modules/@electron/get/dist/cjs/index.js)",
+      "Bash(node node_modules/electron/install.js)",
+      "Bash(node *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}

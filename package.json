@@ -1,0 +1,14 @@
+{
+  "name": "mcp-pet",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "electron": "^28.3.3",
+    "express": "^4.18.2"
+  }
+}
