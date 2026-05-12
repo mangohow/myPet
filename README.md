@@ -27,10 +27,12 @@ npm start
 ### 打包分发
 
 ```bash
-npm run dist
+npm run pack
 ```
 
-生成单文件便携版 exe，输出到 `release/` 目录。
+生成目录到 `release/win-unpacked/`，手动打包为 zip 即可分发。解压后直接运行 `MC桌宠.exe`。
+
+更换桌宠只需替换 `release/win-unpacked/resources/app/assets/` 下的文件。
 
 ---
 

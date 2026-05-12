@@ -12,6 +12,7 @@
   "build": {
     "appId": "com.mypet.coding-pet",
     "productName": "MC桌宠",
+    "asar": false,
     "directories": {
       "output": "release"
     },
@@ -23,13 +24,9 @@
       "renderer/**/*",
       "assets/**/*"
     ],
-    "extraResources": [],
     "win": {
-      "target": "portable",
+      "target": "dir",
       "icon": null
-    },
-    "portable": {
-      "artifactName": "${productName}-${version}.exe"
     }
   },
   "dependencies": {
