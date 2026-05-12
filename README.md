@@ -30,9 +30,8 @@ npm start
 npm run pack
 ```
 
-生成目录到 `release/win-unpacked/`，手动打包为 zip 即可分发。解压后直接运行 `MC桌宠.exe`。
-
-更换桌宠只需替换 `release/win-unpacked/resources/app/assets/` 下的文件。
+生成目录到 `release/win-unpacked/`，手动打包为 zip 即可分发。
+更换桌宠只需替换 `resources/pet.json` 和 `resources/spritesheet.webp`（与 `app.asar` 同级）。
 
 ---
 
@@ -50,7 +49,8 @@ npm run pack
 
 ## 添加新宠物
 
-将新宠物的精灵图和 `pet.json` 放入 `assets/` 目录，替换原有文件后重启即可。
+**开发模式**：替换 `assets/pet.json` 和 `assets/spritesheet.webp`，重启即可。
+**打包后**：替换 `resources/pet.json` 和 `resources/spritesheet.webp`（与 `app.asar` 同级）。
 
 ### pet.json 字段说明
 
@@ -59,7 +59,7 @@ npm run pack
   "id": "pet-id",                    // 唯一标识
   "displayName": "宠物名称",          // 显示名称
   "description": "描述文字",
-  "spritesheetPath": "spritesheet.webp",  // 精灵图文件名（放在 assets/ 下）
+  "spritesheetPath": "spritesheet.webp",  // 精灵图文件名（与 pet.json 同目录）
   "kind": "animal",                  // 种类
   "scale": 0.5,                      // 显示缩放比例（0.5 = 半大）
   "frameSize": {
@@ -148,7 +148,14 @@ myPet/
 │   ├── index.html        # 透明窗口页面
 │   ├── pet.css           # 窗口样式
 │   └── pet.js            # Canvas 动画引擎 + 交互控制
-└── assets/
-    ├── pet.json           # 宠物配置
-    └── spritesheet.webp   # 精灵图
+├── assets/               # 开发模式下的资源目录
+│   ├── pet.json          #   宠物配置
+│   └── spritesheet.webp  #   精灵图
+└── release/              # 打包输出
+    └── win-unpacked/
+        ├── MC桌宠.exe
+        └── resources/
+            ├── app.asar
+            ├── pet.json          # ← 用户可编辑
+            └── spritesheet.webp  # ← 用户可替换
 ```

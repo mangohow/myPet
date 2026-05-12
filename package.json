@@ -23,8 +23,10 @@
       "renderer/**/*",
       "assets/**/*"
     ],
-    "asarUnpack": [
-      "assets/pet.json"
+    "asarUnpack": [],
+    "extraResources": [
+      { "from": "assets/pet.json", "to": "pet.json" },
+      { "from": "assets/spritesheet.webp", "to": "spritesheet.webp" }
     ],
     "win": {
       "target": "dir",

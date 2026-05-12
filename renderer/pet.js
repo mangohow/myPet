@@ -16,20 +16,17 @@ let dragStartX = 0;
 let dragStartY = 0;
 let mousePassthrough = false;
 
-// Load pet config
-fetch('../assets/pet.json')
-  .then(res => res.json())
-  .then(config => {
-    petConfig = config;
-    const scale = config.scale || 0.5;
-    canvas.width = Math.round(config.frameSize.width * scale);
-    canvas.height = Math.round(config.frameSize.height * scale);
-    spritesheet.src = '../assets/' + config.spritesheetPath;
-    spritesheet.onload = () => {
-      startAnimation('idle');
-    };
-  })
-  .catch(err => console.error('Failed to load pet config:', err));
+// Load pet config from main process (handles dev/packaged paths)
+window.petAPI.getPetConfig().then(config => {
+  petConfig = config;
+  const scale = config.scale || 0.5;
+  canvas.width = Math.round(config.frameSize.width * scale);
+  canvas.height = Math.round(config.frameSize.height * scale);
+  spritesheet.src = config._spritesheetUrl;
+  spritesheet.onload = () => {
+    startAnimation('idle');
+  };
+}).catch(err => console.error('Failed to load pet config:', err));
 
 function showBubble(text, duration) {
   bubble.textContent = text;

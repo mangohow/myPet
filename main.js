@@ -1,11 +1,23 @@
 const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const url = require('url');
 const { startMcpServer } = require('./mcp-server');
 
 let petWindow;
 let ignoreMouseEvents = false;
 let petConfig = null;
+
+function getAssetPath() {
+  return app.isPackaged ? process.resourcesPath : path.join(__dirname, 'assets');
+}
+
+function loadPetConfig() {
+  const base = getAssetPath();
+  const cfg = JSON.parse(fs.readFileSync(path.join(base, 'pet.json'), 'utf-8'));
+  cfg._spritesheetUrl = url.pathToFileURL(path.join(base, cfg.spritesheetPath)).href;
+  return cfg;
+}
 
 function toggleMousePassthrough() {
   ignoreMouseEvents = !ignoreMouseEvents;
@@ -17,11 +29,10 @@ function toggleMousePassthrough() {
 
 app.whenReady().then(() => {
   // Read pet config
-  const configPath = path.join(__dirname, 'assets', 'pet.json');
   try {
-    petConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    petConfig = loadPetConfig();
   } catch (e) {
-    console.error('Failed to read pet.json:', e.message);
+    console.error('Failed to read pet.json from', getAssetPath(), e.message);
     process.exit(1);
   }
 
@@ -56,10 +67,8 @@ app.whenReady().then(() => {
 
   global.petWindow = petWindow;
 
-  // Send pet config to renderer
-  ipcMain.on('renderer-ready', (event) => {
-    event.returnValue = petConfig;
-  });
+  // Serve pet config to renderer (with file:// URL for spritesheet)
+  ipcMain.handle('get-pet-config', () => loadPetConfig());
 
   // Toggle passthrough
   ipcMain.on('toggle-passthrough', toggleMousePassthrough);

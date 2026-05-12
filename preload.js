@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('petAPI', {
+  getPetConfig: () => ipcRenderer.invoke('get-pet-config'),
   onAction: (callback) => {
     ipcRenderer.on('pet-action', (_event, action) => callback(action));
   },
