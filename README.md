@@ -4,12 +4,18 @@
 
 ## 功能
 
-- 透明无边框窗口，悬浮于桌面
+- 透明无边框窗口，悬浮于桌面，始终置顶
 - 精灵图动画引擎，支持多组动作切换
 - 双击桌宠循环切换动画
 - 左键拖拽移动位置
-- 鼠标穿透模式（中键或 `Ctrl+Shift+P` 切换）
-- MCP SSE 服务器，供 AI 助手远程控制动画与气泡文字
+- 鼠标穿透模式（中键或 `Ctrl+Shift+P` 切换），智能捕获仅在有交互时接管鼠标
+- MCP SSE 服务器，供 AI 助手远程控制动画、气泡文字、TODO 和定时任务
+- AI 状态自动映射动画 + 随机文本气泡（多个蔡徐坤梗文案）
+- 定时自动回 idle + 随机空闲语音
+- TODO 清单面板（右侧弹出，复选框点击切换、双击删除）
+- Cron 定时任务调度
+- 系统托盘图标，右键菜单可显示 TODO 或退出
+- 锁屏/解锁后自动恢复置顶
 - 支持任意精灵图，更换配置即可切换宠物
 
 ## 快速开始
@@ -42,8 +48,16 @@ npm run pack
 | 左键拖拽 | 移动桌宠位置（rAF 节流，流畅拖拽） |
 | 双击 | 依次循环所有动画 |
 | 中键 / `Ctrl+Shift+P` | 切换鼠标穿透/交互模式 |
+| 系统托盘右键 → 显示 TODO List | 手动呼出 TODO 清单面板 |
 
-穿透模式下鼠标点击会穿透桌宠窗口，不影响操作桌面内容。
+穿透模式下透明区域鼠标点击会穿透桌宠窗口，不影响操作桌面内容。鼠标移到桌宠或 TODO 面板上时自动进入交互模式。
+
+### TODO 面板
+
+- 复选框点击：切换完成/未完成
+- 列表项双击：删除该项
+- 面板每 60 秒自动弹出一次，持续 12 秒后自动隐藏
+- 数据持久化到 `todo.json`（开发模式在 `assets/`，打包后在用户数据目录）
 
 ---
 
@@ -56,19 +70,24 @@ npm run pack
 
 ```jsonc
 {
-  "id": "pet-id",                    // 唯一标识
-  "displayName": "宠物名称",          // 显示名称
+  "id": "pet-id",                        // 唯一标识
+  "displayName": "宠物名称",              // 显示名称（托盘 tooltip）
   "description": "描述文字",
-  "spritesheetPath": "spritesheet.webp",  // 精灵图文件名（与 pet.json 同目录）
-  "kind": "animal",                  // 种类
-  "port": 3099,                      // MCP SSE 服务器监听端口
-  "autoIdleTimeoutMs": 30000,        // 自动回到 idle 的超时时间（ms）
-  "scale": 0.5,                      // 显示缩放比例（0.5 = 半大）
+  "spritesheetPath": "spritesheet.webp", // 精灵图文件名（与 pet.json 同目录）
+  "trayIconPath": "tray-icon.png",       // 托盘图标文件名（与 pet.json 同目录）
+  "todoTitle": "代办项提醒",              // TODO 面板标题文字
+  "kind": "animal",                      // 种类
+  "port": 3099,                          // MCP SSE 服务器监听端口
+  "autoIdleTimeoutMs": 30000,            // 自动回到 idle 的超时时间（ms）
+  "idleSpeechInterval": [30, 60],        // 空闲时随机说话间隔范围（秒）
+  "todoReminderIntervalMs": 60000,       // TODO 面板自动弹出间隔（ms）
+  "todoDisplayDurationMs": 12000,        // TODO 面板显示持续时间（ms）
+  "scale": 0.5,                          // 显示缩放比例（0.5 = 半大）
   "frameSize": {
-    "width": 192,                    // 单帧宽度（px）
-    "height": 208                    // 单帧高度（px）
+    "width": 192,                        // 单帧宽度（px）
+    "height": 208                        // 单帧高度（px）
   },
-  "stateMapping": {                  // AI 状态 → 动画映射
+  "stateMapping": {                      // AI 状态 → 动画映射
     "idle": "idle",
     "thinking": "waiting",
     "in-progress": "running",
@@ -77,13 +96,13 @@ npm run pack
     "error": "failed"
   },
   "animations": {
-    "idle": {                        // 动画名称
-      "frames": [0, 1, 2, 3, 4, 5], // 帧索引列表（从精灵图左上角按行编号）
-      "frameDuration": 200           // 每帧停留时间（ms）
+    "idle": {                            // 动画名称
+      "frames": [0, 1, 2, 3, 4, 5],     // 帧索引列表（从精灵图左上角按行编号）
+      "frameDuration": 200               // 每帧停留时间（ms）
     }
     // ... 更多动画
   },
-  "stateTexts": {                    // 各状态随机文本（切换状态时自动显示）
+  "stateTexts": {                        // 各状态随机文本（切换状态时自动显示）
     "idle": ["文本1", "文本2"],
     "thinking": ["..."],
     "executing": ["..."],
@@ -156,17 +175,20 @@ Continue、Cline 等工具同理，添加一个 url 类型为 `http://localhost:
 
 ```
 myPet/
-├── main.js               # Electron 主进程（窗口管理、IPC）
+├── main.js               # Electron 主进程（窗口管理、IPC、托盘、动态缩放）
 ├── preload.js            # 预加载脚本（桥接主进程与渲染进程）
-├── mcp-server.js         # MCP SSE 服务器
+├── mcp-server.js         # MCP SSE 服务器（状态控制、TODO、Cron）
 ├── package.json
 ├── renderer/
 │   ├── index.html        # 透明窗口页面
-│   ├── pet.css           # 窗口样式
-│   └── pet.js            # Canvas 动画引擎 + 交互控制
-├── assets/               # 开发模式下的资源目录
+│   ├── pet.css           # 窗口样式（气泡、TODO 面板）
+│   └── pet.js            # Canvas 动画引擎 + 智能捕获 + 交互
+├── assets/               # 开发模式下的资源和数据目录
 │   ├── pet.json          #   宠物配置
-│   └── spritesheet.webp  #   精灵图
+│   ├── spritesheet.webp  #   精灵图
+│   ├── tray-icon.png     #   系统托盘图标
+│   ├── todo.json         #   TODO 数据持久化
+│   └── scheduled-tasks.json  # Cron 定时任务持久化
 └── release/              # 打包输出
     └── win-unpacked/
         ├── MC桌宠.exe
