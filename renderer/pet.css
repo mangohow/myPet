@@ -109,7 +109,7 @@ canvas {
   max-height: 180px;
   overflow: hidden;
 }
-#todo-panel.show { opacity: 1; }
+#todo-panel.show { opacity: 1; pointer-events: auto; }
 #todo-panel .todo-title {
   font-weight: bold;
   font-size: 13px;

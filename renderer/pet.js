@@ -171,11 +171,35 @@ window.petAPI.onPassthroughChanged((enabled) => {
 });
 
 // ========== Smart Capture: auto-enable on hover, disable on leave ==========
+let canvasHovered = false;
+let todoPanelHovered = false;
+
+function updateCapture() {
+  if (mousePassthrough) return;
+  if (canvasHovered || todoPanelHovered) {
+    window.petAPI.setCapture(true);
+  } else if (!isDragging) {
+    window.petAPI.setCapture(false);
+  }
+}
+
 canvas.addEventListener('mouseenter', () => {
-  if (!mousePassthrough) window.petAPI.setCapture(true);
+  canvasHovered = true;
+  updateCapture();
 });
 canvas.addEventListener('mouseleave', () => {
-  if (!isDragging && !mousePassthrough) window.petAPI.setCapture(false);
+  canvasHovered = false;
+  updateCapture();
+});
+
+const todoPanelEl = document.getElementById('todo-panel');
+todoPanelEl.addEventListener('mouseenter', () => {
+  todoPanelHovered = true;
+  updateCapture();
+});
+todoPanelEl.addEventListener('mouseleave', () => {
+  todoPanelHovered = false;
+  updateCapture();
 });
 // Safety: clear drag flag on any mouseup (handles release outside canvas)
 document.addEventListener('mouseup', () => {
@@ -273,6 +297,8 @@ function showTodoReminder() {
     clearTimeout(panel._hideTimeout);
     panel._hideTimeout = setTimeout(() => {
       panel.classList.remove('show');
+      todoPanelHovered = false;
+      updateCapture();
     }, petConfig.todoDisplayDurationMs || 12000);
   });
 }
