@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, powerMonitor } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const url = require('url');
@@ -41,8 +41,8 @@ app.whenReady().then(() => {
   const fh = petConfig.frameSize.height || 208;
   const cw = Math.round(fw * scale);
   const ch = Math.round(fh * scale);
-  const winW = cw + 18;
-  const winH = ch + 22;
+  const winW = Math.max(cw + 18, 240) + 210; // Extra 210px at right for TODO panel
+  const winH = ch + 22 + 200; // Extra 200px at top for speech area
 
   petWindow = new BrowserWindow({
     width: winW,
@@ -65,6 +65,18 @@ app.whenReady().then(() => {
 
   petWindow.loadFile('renderer/index.html');
 
+  // Re-assert always-on-top after lock/unlock or focus loss
+  petWindow.on('focus', () => {
+    if (petWindow && !petWindow.isDestroyed()) {
+      petWindow.setAlwaysOnTop(true);
+    }
+  });
+  powerMonitor.on('resume', () => {
+    if (petWindow && !petWindow.isDestroyed()) {
+      petWindow.setAlwaysOnTop(true);
+    }
+  });
+
   global.petWindow = petWindow;
 
   // Serve pet config to renderer (with file:// URL for spritesheet)
@@ -73,6 +85,49 @@ app.whenReady().then(() => {
   // Toggle passthrough
   ipcMain.on('toggle-passthrough', toggleMousePassthrough);
   globalShortcut.register('Ctrl+Shift+P', toggleMousePassthrough);
+
+  // Serve todos to renderer
+  ipcMain.handle('get-todos', () => {
+    const base = getAssetPath();
+    const file = path.join(base, 'todo.json');
+    try {
+      if (fs.existsSync(file)) {
+        return JSON.parse(fs.readFileSync(file, 'utf-8')).todos || [];
+      }
+    } catch (e) { /* ignore */ }
+    return [];
+  });
+
+  // Todo toggle / delete
+  ipcMain.handle('toggle-todo', (_event, id) => {
+    const base = getAssetPath();
+    const file = path.join(base, 'todo.json');
+    try {
+      if (fs.existsSync(file)) {
+        const data = JSON.parse(fs.readFileSync(file, 'utf-8'));
+        const todo = data.todos.find(t => t.id === id);
+        if (todo) {
+          todo.done = !todo.done;
+          fs.writeFileSync(file, JSON.stringify(data, null, 2));
+          return true;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    return false;
+  });
+  ipcMain.handle('delete-todo', (_event, id) => {
+    const base = getAssetPath();
+    const file = path.join(base, 'todo.json');
+    try {
+      if (fs.existsSync(file)) {
+        const data = JSON.parse(fs.readFileSync(file, 'utf-8'));
+        data.todos = data.todos.filter(t => t.id !== id);
+        fs.writeFileSync(file, JSON.stringify(data, null, 2));
+        return true;
+      }
+    } catch (e) { /* ignore */ }
+    return false;
+  });
 
   // Drag via absolute screen coordinates
   ipcMain.handle('get-window-position', () => {
@@ -83,10 +138,10 @@ app.whenReady().then(() => {
     petWindow.setPosition(Math.round(x), Math.round(y));
   });
 
-  // Start MCP server with pet config
-  startMcpServer(petConfig);
+  // Start MCP server with pet config and asset path
+  startMcpServer(petConfig, getAssetPath());
 
-  console.log(`Pet "${petConfig.displayName}" started, MCP server on http://localhost:3099/sse  |  Ctrl+Shift+P to toggle passthrough`);
+  console.log(`Pet "${petConfig.displayName}" started, MCP server on http://localhost:${petConfig.port || 3099}/sse  |  Ctrl+Shift+P to toggle passthrough`);
 });
 
 app.on('window-all-closed', () => {

@@ -10,5 +10,8 @@ contextBridge.exposeInMainWorld('petAPI', {
   },
   togglePassthrough: () => ipcRenderer.send('toggle-passthrough'),
   getWindowPosition: () => ipcRenderer.invoke('get-window-position'),
-  setWindowPosition: (x, y) => ipcRenderer.send('set-window-position', { x, y })
+  setWindowPosition: (x, y) => ipcRenderer.send('set-window-position', { x, y }),
+  getTodos: () => ipcRenderer.invoke('get-todos'),
+  toggleTodo: (id) => ipcRenderer.invoke('toggle-todo', id),
+  deleteTodo: (id) => ipcRenderer.invoke('delete-todo', id)
 });

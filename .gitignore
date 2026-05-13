@@ -3,3 +3,4 @@ package-lock.json
 release/
 .claude/
 *.log
+*.txt

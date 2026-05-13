@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "coding-pet": {
+      "type": "url",
+      "url": "http://localhost:3099/sse"
+    }
+  }
+}

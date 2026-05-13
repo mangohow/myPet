@@ -39,7 +39,7 @@ npm run pack
 
 | 操作 | 功能 |
 |------|------|
-| 左键拖拽 | 移动桌宠位置 |
+| 左键拖拽 | 移动桌宠位置（rAF 节流，流畅拖拽） |
 | 双击 | 依次循环所有动画 |
 | 中键 / `Ctrl+Shift+P` | 切换鼠标穿透/交互模式 |
 
@@ -61,6 +61,8 @@ npm run pack
   "description": "描述文字",
   "spritesheetPath": "spritesheet.webp",  // 精灵图文件名（与 pet.json 同目录）
   "kind": "animal",                  // 种类
+  "port": 3099,                      // MCP SSE 服务器监听端口
+  "autoIdleTimeoutMs": 30000,        // 自动回到 idle 的超时时间（ms）
   "scale": 0.5,                      // 显示缩放比例（0.5 = 半大）
   "frameSize": {
     "width": 192,                    // 单帧宽度（px）
@@ -80,6 +82,13 @@ npm run pack
       "frameDuration": 200           // 每帧停留时间（ms）
     }
     // ... 更多动画
+  },
+  "stateTexts": {                    // 各状态随机文本（切换状态时自动显示）
+    "idle": ["文本1", "文本2"],
+    "thinking": ["..."],
+    "executing": ["..."],
+    "done": ["..."],
+    "error": ["..."]
   }
 }
 ```
@@ -102,9 +111,16 @@ npm run pack
 | 工具 | 说明 | 参数 |
 |------|------|------|
 | `set_pet_animation` | 播放指定动画 | `animation`: 动画名称（自动适配当前宠物） |
-| `set_pet_state` | 设置 AI 工作状态，自动映射到动画 | `state`: idle / thinking / in-progress / executing / done / error |
+| `set_pet_state` | 设置 AI 工作状态，自动映射到动画 | `state`: idle/thinking/in-progress/executing/done/error，可选 `duration`(ms) + `nextState` |
 | `pet_say` | 宠物显示气泡文字 | `text`: 要说的话 |
-| `get_pet_info` | 获取当前宠物信息 | 无参数，返回名称、可用动画列表、状态映射等 |
+| `get_pet_info` | 获取当前宠物信息 | 无参数，返回名称、可用动画、状态映射、端口配置等 |
+| `list_scheduled_tasks` | 列出所有定时任务 | 无参数 |
+| `add_scheduled_task` | 添加 cron 定时任务 | `cron`: cron 表达式, `action`: 要执行的动作, `name`(可选), `enabled`(可选) |
+| `delete_scheduled_task` | 删除定时任务 | `id`: 任务 ID |
+| `add_todo` | 添加 TODO 项 | `text`: TODO 内容 |
+| `list_todos` | 查询 TODO 列表 | `filter`: all/pending/done（可选，默认 all） |
+| `mark_todo_done` | 标记 TODO 完成 | `id`: TODO ID |
+| `delete_todo` | 删除 TODO 项 | `id`: TODO ID |
 
 ### 配置 AI 助手
 
