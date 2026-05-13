@@ -1,0 +1,24 @@
+{
+  "tasks": [
+    {
+      "id": "cron-1778686485534",
+      "name": "早上打招呼",
+      "cron": "0 9 * * *",
+      "action": {
+        "type": "pet_say",
+        "text": "哥哥早上好，今天也要努力练习哦～"
+      },
+      "enabled": true
+    },
+    {
+      "id": "cron-1778686525322",
+      "name": "睡觉提醒",
+      "cron": "37 23 * * *",
+      "action": {
+        "type": "pet_say",
+        "text": "哥哥, 你该睡觉了"
+      },
+      "enabled": true
+    }
+  ]
+}

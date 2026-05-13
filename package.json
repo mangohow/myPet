@@ -32,6 +32,10 @@
       {
         "from": "assets/spritesheet.webp",
         "to": "spritesheet.webp"
+      },
+      {
+        "from": "assets/tray-icon.png",
+        "to": "tray-icon.png"
       }
     ],
     "win": {

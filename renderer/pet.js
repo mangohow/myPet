@@ -265,6 +265,13 @@ if (window.petAPI.getTodos) {
   setInterval(showTodoReminder, TODO_REMINDER_INTERVAL);
 }
 
+// Periodically show random idle text while in idle state
+setInterval(() => {
+  if (currentAnimName === 'idle' && petConfig && petConfig.stateTexts && petConfig.stateTexts.idle) {
+    showRandomStateText('idle');
+  }
+}, 20000);
+
 // Tray "Show TODO List" handler
 if (window.petAPI.onShowTodo) {
   window.petAPI.onShowTodo(() => showTodoReminder());

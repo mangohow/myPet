@@ -16,6 +16,10 @@ function getAssetPath() {
   return app.isPackaged ? process.resourcesPath : path.join(__dirname, 'assets');
 }
 
+function getDataPath() {
+  return app.isPackaged ? app.getPath('userData') : path.join(__dirname, 'assets');
+}
+
 function loadPetConfig() {
   const base = getAssetPath();
   const cfg = JSON.parse(fs.readFileSync(path.join(base, 'pet.json'), 'utf-8'));
@@ -118,8 +122,7 @@ app.whenReady().then(() => {
 
   // Serve todos to renderer
   ipcMain.handle('get-todos', () => {
-    const base = getAssetPath();
-    const file = path.join(base, 'todo.json');
+    const file = path.join(getDataPath(), 'todo.json');
     try {
       if (fs.existsSync(file)) {
         return JSON.parse(fs.readFileSync(file, 'utf-8')).todos || [];
@@ -130,8 +133,7 @@ app.whenReady().then(() => {
 
   // Todo toggle / delete
   ipcMain.handle('toggle-todo', (_event, id) => {
-    const base = getAssetPath();
-    const file = path.join(base, 'todo.json');
+    const file = path.join(getDataPath(), 'todo.json');
     try {
       if (fs.existsSync(file)) {
         const data = JSON.parse(fs.readFileSync(file, 'utf-8'));
@@ -146,8 +148,7 @@ app.whenReady().then(() => {
     return false;
   });
   ipcMain.handle('delete-todo', (_event, id) => {
-    const base = getAssetPath();
-    const file = path.join(base, 'todo.json');
+    const file = path.join(getDataPath(), 'todo.json');
     try {
       if (fs.existsSync(file)) {
         const data = JSON.parse(fs.readFileSync(file, 'utf-8'));
@@ -168,8 +169,8 @@ app.whenReady().then(() => {
     petWindow.setPosition(Math.round(x), Math.round(y));
   });
 
-  // Start MCP server with pet config and asset path
-  startMcpServer(petConfig, getAssetPath());
+  // Start MCP server with pet config, asset path, and writable data path
+  startMcpServer(petConfig, getAssetPath(), getDataPath());
 
   console.log(`Pet "${petConfig.displayName}" started, MCP server on http://localhost:${petConfig.port || 3099}/sse  |  Ctrl+Shift+P to toggle passthrough`);
 });

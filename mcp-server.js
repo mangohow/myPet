@@ -11,15 +11,15 @@ const sessions = new Map();
 // ========== Cron Scheduler ==========
 
 class CronScheduler {
-  constructor(assetPath) {
-    this.assetPath = assetPath;
+  constructor(dataPath) {
+    this.dataPath = dataPath;
     this.tasks = [];
     this.timers = new Map();
     this._loaded = false;
   }
 
   get filePath() {
-    return path.join(this.assetPath, 'scheduled-tasks.json');
+    return path.join(this.dataPath, 'scheduled-tasks.json');
   }
 
   loadTasks() {
@@ -185,9 +185,9 @@ function registerTools(server, petConfig) {
 
 // ========== TODO Persistence ==========
 
-function loadTodos(assetPath) {
+function loadTodos(dataPath) {
   try {
-    const file = path.join(assetPath, 'todo.json');
+    const file = path.join(dataPath, 'todo.json');
     if (fs.existsSync(file)) {
       return JSON.parse(fs.readFileSync(file, 'utf-8')).todos || [];
     }
@@ -195,9 +195,9 @@ function loadTodos(assetPath) {
   return [];
 }
 
-function saveTodos(assetPath, todos) {
+function saveTodos(dataPath, todos) {
   try {
-    const file = path.join(assetPath, 'todo.json');
+    const file = path.join(dataPath, 'todo.json');
     const dir = path.dirname(file);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(file, JSON.stringify({ todos }, null, 2));
@@ -206,16 +206,16 @@ function saveTodos(assetPath, todos) {
   }
 }
 
-function registerTodoTools(server, assetPath) {
+function registerTodoTools(server, dataPath) {
   server.tool(
     'add_todo',
     'Add a new TODO item',
     { text: z.string().max(100).describe('TODO content, max 100 characters') },
     async (args) => {
-      const todos = loadTodos(assetPath);
+      const todos = loadTodos(dataPath);
       const todo = { id: 'todo-' + Date.now(), text: args.text, done: false, createdAt: new Date().toISOString() };
       todos.push(todo);
-      saveTodos(assetPath, todos);
+      saveTodos(dataPath, todos);
       return { content: [{ type: 'text', text: `TODO已添加: ${todo.id}` }] };
     }
   );
@@ -225,7 +225,7 @@ function registerTodoTools(server, assetPath) {
     'List TODO items, optionally filtered by status',
     { filter: z.enum(['all', 'pending', 'done']).optional().default('all') },
     async (args) => {
-      const todos = loadTodos(assetPath);
+      const todos = loadTodos(dataPath);
       let filtered = todos;
       if (args.filter === 'pending') filtered = todos.filter(t => !t.done);
       else if (args.filter === 'done') filtered = todos.filter(t => t.done);
@@ -238,11 +238,11 @@ function registerTodoTools(server, assetPath) {
     'Mark a TODO item as completed',
     { id: z.string() },
     async (args) => {
-      const todos = loadTodos(assetPath);
+      const todos = loadTodos(dataPath);
       const todo = todos.find(t => t.id === args.id);
       if (!todo) return { content: [{ type: 'text', text: 'TODO未找到' }] };
       todo.done = true;
-      saveTodos(assetPath, todos);
+      saveTodos(dataPath, todos);
       return { content: [{ type: 'text', text: 'TODO已标记完成' }] };
     }
   );
@@ -252,11 +252,11 @@ function registerTodoTools(server, assetPath) {
     'Delete a TODO item permanently',
     { id: z.string() },
     async (args) => {
-      const todos = loadTodos(assetPath);
+      const todos = loadTodos(dataPath);
       const idx = todos.findIndex(t => t.id === args.id);
       if (idx === -1) return { content: [{ type: 'text', text: 'TODO未找到' }] };
       todos.splice(idx, 1);
-      saveTodos(assetPath, todos);
+      saveTodos(dataPath, todos);
       return { content: [{ type: 'text', text: 'TODO已删除' }] };
     }
   );
@@ -310,7 +310,7 @@ function registerSchedulerTools(server, scheduler) {
 
 // ========== Midnight Cleanup ==========
 
-function scheduleMidnightCleanup(assetPath) {
+function scheduleMidnightCleanup(dataPath) {
   const now = Date.now();
   const next = new Date();
   next.setHours(24, 0, 0, 0); // next midnight
@@ -318,7 +318,7 @@ function scheduleMidnightCleanup(assetPath) {
 
   setTimeout(() => {
     try {
-      const file = path.join(assetPath, 'todo.json');
+      const file = path.join(dataPath, 'todo.json');
       if (fs.existsSync(file)) {
         const data = JSON.parse(fs.readFileSync(file, 'utf-8'));
         const before = data.todos.length;
@@ -328,16 +328,17 @@ function scheduleMidnightCleanup(assetPath) {
         }
       }
     } catch (e) { /* ignore */ }
-    scheduleMidnightCleanup(assetPath);
+    scheduleMidnightCleanup(dataPath);
   }, delay);
 }
 
 // ========== MCP Server ==========
 
-async function startMcpServer(petConfig, assetPath) {
-  const scheduler = new CronScheduler(assetPath);
+async function startMcpServer(petConfig, assetPath, dataPath) {
+  dataPath = dataPath || assetPath;
+  const scheduler = new CronScheduler(dataPath);
   scheduler.start();
-  scheduleMidnightCleanup(assetPath);
+  scheduleMidnightCleanup(dataPath);
 
   const app = express();
   const PORT = petConfig.port || 3099;
@@ -352,7 +353,7 @@ async function startMcpServer(petConfig, assetPath) {
 
     registerTools(server, petConfig);
     registerSchedulerTools(server, scheduler);
-    registerTodoTools(server, assetPath);
+    registerTodoTools(server, dataPath);
 
     const sessionId = transport.sessionId;
     sessions.set(sessionId, { transport, server });
