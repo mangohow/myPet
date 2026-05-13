@@ -30,6 +30,10 @@ window.petAPI.getPetConfig().then(config => {
   spritesheet.onload = () => {
     startAnimation('idle');
   };
+  // Start idle speech after first TODO reminder interval
+  if (config.stateTexts && config.stateTexts.idle) {
+    setTimeout(scheduleIdleSpeech, 15000);
+  }
 }).catch(err => console.error('Failed to load pet config:', err));
 
 function showBubble(text, duration) {
@@ -265,12 +269,17 @@ if (window.petAPI.getTodos) {
   setInterval(showTodoReminder, TODO_REMINDER_INTERVAL);
 }
 
-// Periodically show random idle text while in idle state
-setInterval(() => {
-  if (currentAnimName === 'idle' && petConfig && petConfig.stateTexts && petConfig.stateTexts.idle) {
-    showRandomStateText('idle');
-  }
-}, 20000);
+// Schedule idle speech at random intervals (started after config loads)
+function scheduleIdleSpeech() {
+  const range = petConfig.idleSpeechInterval;
+  const min = (range && range.length >= 2 ? range[0] : 30) * 1000;
+  const max = (range && range.length >= 2 ? range[1] : 60) * 1000;
+  const delay = Math.random() * (max - min) + min;
+  setTimeout(() => {
+    if (currentAnimName === 'idle') showRandomStateText('idle');
+    scheduleIdleSpeech();
+  }, delay);
+}
 
 // Tray "Show TODO List" handler
 if (window.petAPI.onShowTodo) {

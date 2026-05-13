@@ -7,6 +7,7 @@
   "todoTitle": "哥哥, 代办项记得处理哦!",
   "kind": "animal",
   "autoIdleTimeoutMs": 30000,
+  "idleSpeechInterval": [30, 60],
   "port": 3099,
   "scale": 0.5,
   "frameSize": { "width": 192, "height": 208 },
