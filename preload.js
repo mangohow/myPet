@@ -16,5 +16,6 @@ contextBridge.exposeInMainWorld('petAPI', {
   deleteTodo: (id) => ipcRenderer.invoke('delete-todo', id),
   onShowTodo: (callback) => {
     ipcRenderer.on('show-todo', () => callback());
-  }
+  },
+  setCapture: (capture) => ipcRenderer.send('set-capture', capture)
 });

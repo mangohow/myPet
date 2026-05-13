@@ -6,7 +6,7 @@ const { startMcpServer } = require('./mcp-server');
 
 let petWindow;
 let tray = null;
-let ignoreMouseEvents = false;
+let ignoreMouseEvents = true;
 let petConfig = null;
 
 // Set early to prevent Windows from creating a default notification icon
@@ -50,13 +50,14 @@ app.whenReady().then(() => {
   const cw = Math.round(fw * scale);
   const ch = Math.round(fh * scale);
   const winW = Math.max(cw + 18, 240) + 210; // Extra 210px at right for TODO panel
-  const winH = ch + 22 + 200; // Extra 200px at top for speech area
+  const baseH = ch + 22;
+  const speechH = 200;
 
   petWindow = new BrowserWindow({
     width: winW,
-    height: winH,
+    height: baseH + speechH, // Always tall enough for speech bubble
     x: 100,
-    y: 100,
+    y: 100 - speechH,        // Start higher so pet bottom edge is at same screen position
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -69,7 +70,9 @@ app.whenReady().then(() => {
     }
   });
 
-  petWindow.setIgnoreMouseEvents(false);
+  // Default: passthrough ON with forward — only elements with pointer-events:auto receive clicks
+  petWindow.setIgnoreMouseEvents(true, { forward: true });
+  ignoreMouseEvents = true;
 
   petWindow.loadFile('renderer/index.html');
 
@@ -119,6 +122,16 @@ app.whenReady().then(() => {
   // Toggle passthrough
   ipcMain.on('toggle-passthrough', toggleMousePassthrough);
   globalShortcut.register('Ctrl+Shift+P', toggleMousePassthrough);
+
+  // Smart auto-capture: renderer tells main to enable/disable mouse capture
+  ipcMain.on('set-capture', (_event, capture) => {
+    if (capture) {
+      petWindow.setIgnoreMouseEvents(false);
+    } else {
+      petWindow.setIgnoreMouseEvents(true, { forward: true });
+    }
+    ignoreMouseEvents = capture;
+  });
 
   // Serve todos to renderer
   ipcMain.handle('get-todos', () => {

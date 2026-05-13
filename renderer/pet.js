@@ -34,15 +34,24 @@ window.petAPI.getPetConfig().then(config => {
   if (config.stateTexts && config.stateTexts.idle) {
     setTimeout(scheduleIdleSpeech, 15000);
   }
+
+  // Start TODO reminder with configured interval
+  if (window.petAPI.getTodos) {
+    const reminderInterval = config.todoReminderIntervalMs || 60000;
+    const displayDuration = config.todoDisplayDurationMs || 12000;
+    startTodoReminder(reminderInterval);
+  }
 }).catch(err => console.error('Failed to load pet config:', err));
+
+function hideBubble() {
+  bubble.classList.remove('show');
+}
 
 function showBubble(text, duration) {
   bubble.textContent = text.length > 100 ? text.slice(0, 100) : text;
   bubble.classList.add('show');
   clearTimeout(bubble._timeout);
-  bubble._timeout = setTimeout(() => {
-    bubble.classList.remove('show');
-  }, duration || 4000);
+  bubble._timeout = setTimeout(hideBubble, duration || 4000);
 }
 
 function showRandomStateText(state) {
@@ -52,9 +61,7 @@ function showRandomStateText(state) {
     clearTimeout(bubble._timeout);
     bubble.textContent = raw.length > 100 ? raw.slice(0, 100) : raw;
     bubble.classList.add('show');
-    bubble._timeout = setTimeout(() => {
-      bubble.classList.remove('show');
-    }, 4000);
+    bubble._timeout = setTimeout(hideBubble, 4000);
   }
 }
 
@@ -155,14 +162,24 @@ window.petAPI.onAction((action) => {
     bubble.textContent = action.text.length > 100 ? action.text.slice(0, 100) : action.text;
     bubble.classList.add('show');
     clearTimeout(bubble._timeout);
-    bubble._timeout = setTimeout(() => {
-      bubble.classList.remove('show');
-    }, 4000);
+    bubble._timeout = setTimeout(hideBubble, 4000);
   }
 });
 
 window.petAPI.onPassthroughChanged((enabled) => {
   mousePassthrough = enabled;
+});
+
+// ========== Smart Capture: auto-enable on hover, disable on leave ==========
+canvas.addEventListener('mouseenter', () => {
+  if (!mousePassthrough) window.petAPI.setCapture(true);
+});
+canvas.addEventListener('mouseleave', () => {
+  if (!isDragging && !mousePassthrough) window.petAPI.setCapture(false);
+});
+// Safety: clear drag flag on any mouseup (handles release outside canvas)
+document.addEventListener('mouseup', () => {
+  isDragging = false;
 });
 
 // ========== Mouse Interaction ==========
@@ -220,9 +237,6 @@ canvas.addEventListener('mouseup', () => {
 
 // ========== TODO Reminder ==========
 
-const TODO_REMINDER_INTERVAL = 60000;
-const TODO_DISPLAY_DURATION = 12000;
-
 function showTodoReminder() {
   if (!window.petAPI.getTodos) return;
   window.petAPI.getTodos().then(todos => {
@@ -259,14 +273,14 @@ function showTodoReminder() {
     clearTimeout(panel._hideTimeout);
     panel._hideTimeout = setTimeout(() => {
       panel.classList.remove('show');
-    }, TODO_DISPLAY_DURATION);
+    }, petConfig.todoDisplayDurationMs || 12000);
   });
 }
 
-// Start TODO reminder after initial load
-if (window.petAPI.getTodos) {
+// Start TODO reminder with configured interval
+function startTodoReminder(interval) {
   setTimeout(showTodoReminder, 15000);
-  setInterval(showTodoReminder, TODO_REMINDER_INTERVAL);
+  setInterval(showTodoReminder, interval);
 }
 
 // Schedule idle speech at random intervals (started after config loads)
