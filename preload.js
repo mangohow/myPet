@@ -13,5 +13,8 @@ contextBridge.exposeInMainWorld('petAPI', {
   setWindowPosition: (x, y) => ipcRenderer.send('set-window-position', { x, y }),
   getTodos: () => ipcRenderer.invoke('get-todos'),
   toggleTodo: (id) => ipcRenderer.invoke('toggle-todo', id),
-  deleteTodo: (id) => ipcRenderer.invoke('delete-todo', id)
+  deleteTodo: (id) => ipcRenderer.invoke('delete-todo', id),
+  onShowTodo: (callback) => {
+    ipcRenderer.on('show-todo', () => callback());
+  }
 });

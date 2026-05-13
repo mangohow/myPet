@@ -3,6 +3,8 @@
   "displayName": "鸡哥ikun",
   "description": "A meme-style Codex basketball pet based on the user doll image.",
   "spritesheetPath": "spritesheet.webp",
+  "trayIconPath": "tray-icon.png",
+  "todoTitle": "哥哥, 代办项记得处理哦!",
   "kind": "animal",
   "autoIdleTimeoutMs": 30000,
   "port": 3099,

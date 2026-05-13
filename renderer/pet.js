@@ -17,10 +17,12 @@ let dragStartY = 0;
 let mousePassthrough = false;
 let lastStateChangeTime = 0;
 let stateTransitionTimeout = null;
+let todoTitle = '只因任务清单';
 
 // Load pet config from main process (handles dev/packaged paths)
 window.petAPI.getPetConfig().then(config => {
   petConfig = config;
+  todoTitle = config.todoTitle || '只因任务清单';
   const scale = config.scale || 0.5;
   canvas.width = Math.round(config.frameSize.width * scale);
   canvas.height = Math.round(config.frameSize.height * scale);
@@ -224,7 +226,7 @@ function showTodoReminder() {
     const panel = document.getElementById('todo-panel');
     if (!panel) return;
 
-    let html = '<div class="todo-title">只因任务清单</div>';
+    let html = '<div class="todo-title">' + todoTitle + '</div>';
     todos.forEach(todo => {
       const statusClass = todo.done ? 'checked' : '';
       const itemClass = todo.done ? 'todo-item done' : 'todo-item';
@@ -261,6 +263,11 @@ function showTodoReminder() {
 if (window.petAPI.getTodos) {
   setTimeout(showTodoReminder, 15000);
   setInterval(showTodoReminder, TODO_REMINDER_INTERVAL);
+}
+
+// Tray "Show TODO List" handler
+if (window.petAPI.onShowTodo) {
+  window.petAPI.onShowTodo(() => showTodoReminder());
 }
 
 // Double-click to cycle animations

@@ -1,12 +1,16 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, powerMonitor } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, powerMonitor, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const url = require('url');
 const { startMcpServer } = require('./mcp-server');
 
 let petWindow;
+let tray = null;
 let ignoreMouseEvents = false;
 let petConfig = null;
+
+// Set early to prevent Windows from creating a default notification icon
+app.setAppUserModelId('coding.pet.ikun');
 
 function getAssetPath() {
   return app.isPackaged ? process.resourcesPath : path.join(__dirname, 'assets');
@@ -78,6 +82,32 @@ app.whenReady().then(() => {
   });
 
   global.petWindow = petWindow;
+
+  // System tray icon with right-click menu
+  try {
+    const iconPath = path.join(getAssetPath(), petConfig.trayIconPath || 'tray-icon.png');
+    const icon = nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32 });
+    tray = new Tray(icon);
+    tray.setToolTip(petConfig.displayName || 'Coding Pet');
+    const ctxMenu = Menu.buildFromTemplate([
+      {
+        label: '显示 TODO List',
+        click: () => {
+          if (petWindow && !petWindow.isDestroyed()) {
+            petWindow.webContents.send('show-todo');
+          }
+        }
+      },
+      { type: 'separator' },
+      {
+        label: '退出',
+        click: () => { app.quit(); }
+      }
+    ]);
+    tray.setContextMenu(ctxMenu);
+  } catch (e) {
+    console.warn('Failed to create tray icon:', e.message);
+  }
 
   // Serve pet config to renderer (with file:// URL for spritesheet)
   ipcMain.handle('get-pet-config', () => loadPetConfig());
