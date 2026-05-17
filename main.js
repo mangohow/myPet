@@ -8,6 +8,7 @@ let petWindow;
 let tray = null;
 let ignoreMouseEvents = true;
 let petConfig = null;
+let alwaysOnTopInterval = null;
 
 // Set early to prevent Windows from creating a default notification icon
 app.setAppUserModelId('coding.pet.ikun');
@@ -89,6 +90,14 @@ app.whenReady().then(() => {
   });
 
   global.petWindow = petWindow;
+
+  // Periodically re-assert always-on-top to prevent other apps from burying the pet
+  alwaysOnTopInterval = setInterval(() => {
+    if (petWindow && !petWindow.isDestroyed()) {
+      petWindow.setAlwaysOnTop(true);
+      petWindow.setAlwaysOnTop(true, 'screen-saver');
+    }
+  }, 4000);
 
   // System tray icon with right-click menu
   try {
@@ -193,5 +202,6 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
+  if (alwaysOnTopInterval) clearInterval(alwaysOnTopInterval);
   globalShortcut.unregisterAll();
 });

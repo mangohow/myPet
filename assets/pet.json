@@ -6,7 +6,7 @@
   "trayIconPath": "tray-icon.png",
   "todoTitle": "哥哥, 代办项记得处理哦!",
   "kind": "animal",
-  "autoIdleTimeoutMs": 30000,
+  "disableRandomText": false,
   "idleSpeechInterval": [30, 60],
   "todoReminderIntervalMs": 60000,
   "todoDisplayDurationMs": 12000,

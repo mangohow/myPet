@@ -107,7 +107,21 @@ canvas {
   pointer-events: none;
   min-height: 0;
   max-height: 180px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+#todo-panel::-webkit-scrollbar {
+  width: 5px;
+}
+#todo-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+#todo-panel::-webkit-scrollbar-thumb {
+  background: #d0d0e8;
+  border-radius: 3px;
+}
+#todo-panel::-webkit-scrollbar-thumb:hover {
+  background: #b0b0c8;
 }
 #todo-panel.show { opacity: 1; pointer-events: auto; }
 #todo-panel .todo-title {

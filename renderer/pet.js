@@ -19,6 +19,11 @@ let lastStateChangeTime = 0;
 let stateTransitionTimeout = null;
 let todoTitle = '只因任务清单';
 
+// Sequence player state
+let sequenceQueue = [];
+let sequenceTimer = null;
+let sequenceActive = false;
+
 // Load pet config from main process (handles dev/packaged paths)
 window.petAPI.getPetConfig().then(config => {
   petConfig = config;
@@ -83,16 +88,6 @@ function startAnimation(name) {
 function tick(now) {
   if (!currentAnimation) return;
 
-  // Auto-idle: return to idle if no state change within timeout
-  if (petConfig.autoIdleTimeoutMs && currentAnimName !== 'idle') {
-    if (Date.now() - lastStateChangeTime > petConfig.autoIdleTimeoutMs) {
-      const idleAnim = petConfig.stateMapping ? (petConfig.stateMapping.idle || 'idle') : 'idle';
-      startAnimation(idleAnim);
-      showRandomStateText('idle');
-      lastStateChangeTime = Date.now();
-    }
-  }
-
   const frameDuration = currentAnimation.frameDuration || 200;
   const elapsed = Math.min(now - lastTime, frameDuration * 2);
   lastTime = now;
@@ -124,8 +119,54 @@ function tick(now) {
 
 // ========== MCP Action Handling ==========
 
+function stopSequence() {
+  sequenceActive = false;
+  sequenceQueue = [];
+  if (sequenceTimer) {
+    clearTimeout(sequenceTimer);
+    sequenceTimer = null;
+  }
+}
+
+function advanceSequence() {
+  if (!sequenceActive || sequenceQueue.length === 0) {
+    if (sequenceActive) {
+      if (currentAnimName !== 'idle') {
+        const idleAnim = petConfig.stateMapping ? (petConfig.stateMapping.idle || 'idle') : 'idle';
+        startAnimation(idleAnim);
+        lastStateChangeTime = Date.now();
+      }
+    }
+    sequenceActive = false;
+    sequenceQueue = [];
+    return;
+  }
+
+  const item = sequenceQueue.shift();
+  const duration = item.duration || 3000;
+
+  if (item.animation) {
+    startAnimation(item.animation);
+    lastStateChangeTime = Date.now();
+  }
+  if (item.text) {
+    showBubble(item.text, duration);
+  }
+
+  sequenceTimer = setTimeout(advanceSequence, duration);
+}
+
+function playSequence(actions) {
+  stopSequence();
+  sequenceQueue = actions.map(a => Object.assign({}, a));
+  sequenceActive = true;
+  advanceSequence();
+}
+
 window.petAPI.onAction((action) => {
+  if (!petConfig) return;
   if (action.name === 'set_pet_state') {
+    stopSequence();
     const mapping = petConfig.stateMapping || {
       idle: 'idle',
       thinking: 'waiting',
@@ -136,7 +177,11 @@ window.petAPI.onAction((action) => {
     };
     const animName = mapping[action.state] || 'idle';
     startAnimation(animName);
-    showRandomStateText(action.state);
+    if (action.text) {
+      showBubble(action.text);
+    } else if (!petConfig.disableRandomText) {
+      showRandomStateText(action.state);
+    }
     lastStateChangeTime = Date.now();
 
     // Duration-based auto-transition
@@ -150,19 +195,34 @@ window.petAPI.onAction((action) => {
         const targetAnim = (petConfig.stateMapping && petConfig.stateMapping[targetState]) || targetState;
         if (petConfig.animations[targetAnim]) {
           startAnimation(targetAnim);
-          showRandomStateText(targetState);
+          if (!petConfig.disableRandomText) {
+            showRandomStateText(targetState);
+          }
           lastStateChangeTime = Date.now();
         }
         stateTransitionTimeout = null;
       }, action.duration);
     }
   } else if (action.name === 'set_pet_animation') {
+    stopSequence();
+    if (stateTransitionTimeout) {
+      clearTimeout(stateTransitionTimeout);
+      stateTransitionTimeout = null;
+    }
     startAnimation(action.animation);
+    lastStateChangeTime = Date.now();
   } else if (action.name === 'pet_say') {
     bubble.textContent = action.text.length > 100 ? action.text.slice(0, 100) : action.text;
     bubble.classList.add('show');
     clearTimeout(bubble._timeout);
     bubble._timeout = setTimeout(hideBubble, 4000);
+  } else if (action.name === 'play_action_sequence') {
+    stopSequence();
+    if (stateTransitionTimeout) {
+      clearTimeout(stateTransitionTimeout);
+      stateTransitionTimeout = null;
+    }
+    playSequence(action.actions);
   }
 });
 

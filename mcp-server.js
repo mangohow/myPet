@@ -98,13 +98,16 @@ class CronScheduler {
     if (global.petWindow && !global.petWindow.isDestroyed()) {
       switch (action.type) {
         case 'set_pet_state':
-          global.petWindow.webContents.send('pet-action', { name: 'set_pet_state', state: action.state });
+          global.petWindow.webContents.send('pet-action', { name: 'set_pet_state', state: action.state, text: action.text, duration: action.duration, nextState: action.nextState });
           break;
         case 'set_pet_animation':
           global.petWindow.webContents.send('pet-action', { name: 'set_pet_animation', animation: action.animation });
           break;
         case 'pet_say':
           global.petWindow.webContents.send('pet-action', { name: 'pet_say', text: action.text });
+          break;
+        case 'play_action_sequence':
+          global.petWindow.webContents.send('pet-action', { name: 'play_action_sequence', actions: action.actions });
           break;
       }
     }
@@ -131,9 +134,10 @@ function registerTools(server, petConfig) {
 
   server.tool(
     'set_pet_state',
-    'Set the pet state (maps AI workflow states to animations). Optionally set duration and nextState for timed auto-transition.',
+    'Set the pet state (maps AI workflow states to animations). Optionally set text, duration and nextState.',
     {
       state: stateEnum,
+      text: z.string().max(100).optional().describe('Explicit text for speech bubble. If omitted, random state text is shown (unless disableRandomText is true in config).'),
       duration: z.number().optional().describe('Duration in ms before auto-transitioning'),
       nextState: stateEnum.optional().describe('State to transition to after duration expires')
     },
@@ -142,6 +146,7 @@ function registerTools(server, petConfig) {
         global.petWindow.webContents.send('pet-action', {
           name: 'set_pet_state',
           state: args.state,
+          text: args.text,
           duration: args.duration,
           nextState: args.nextState
         });
@@ -179,6 +184,33 @@ function registerTools(server, petConfig) {
           }, null, 2)
         }]
       };
+    }
+  );
+
+  server.tool(
+    'play_action_sequence',
+    'Play a sequence of pet actions one after another. Each step can have animation, text, or both.',
+    {
+      actions: z.array(z.object({
+        animation: z.string().optional().describe('Animation name to play for this step'),
+        text: z.string().max(100).optional().describe('Text to show in speech bubble for this step'),
+        duration: z.number().min(100).optional().describe('Display duration for this step in ms. Defaults to 3000ms.')
+      })).describe('Array of action items to play sequentially. Each item must have at least animation or text.')
+    },
+    async (args) => {
+      if (!global.petWindow || global.petWindow.isDestroyed()) {
+        return { content: [{ type: 'text', text: 'Pet window not available' }] };
+      }
+      for (let i = 0; i < args.actions.length; i++) {
+        if (!args.actions[i].animation && !args.actions[i].text) {
+          return { content: [{ type: 'text', text: `Action item ${i} must have at least "animation" or "text"` }] };
+        }
+      }
+      global.petWindow.webContents.send('pet-action', {
+        name: 'play_action_sequence',
+        actions: args.actions
+      });
+      return { content: [{ type: 'text', text: `开始播放动作序列 (${args.actions.length} 步)` }] };
     }
   );
 }
@@ -263,7 +295,7 @@ function registerTodoTools(server, dataPath) {
 }
 
 function registerSchedulerTools(server, scheduler) {
-  const actionTypeEnum = z.enum(['set_pet_state', 'set_pet_animation', 'pet_say']);
+  const actionTypeEnum = z.enum(['set_pet_state', 'set_pet_animation', 'pet_say', 'play_action_sequence']);
   const stateEnum = z.enum(['idle', 'thinking', 'in-progress', 'executing', 'done', 'error']);
 
   server.tool(
@@ -284,7 +316,12 @@ function registerSchedulerTools(server, scheduler) {
         type: actionTypeEnum,
         state: stateEnum.optional(),
         animation: z.string().optional(),
-        text: z.string().max(100).optional()
+        text: z.string().max(100).optional(),
+        actions: z.array(z.object({
+          animation: z.string().optional(),
+          text: z.string().max(100).optional(),
+          duration: z.number().min(100).optional()
+        })).optional()
       }),
       name: z.string().optional().describe('Optional display name for the task'),
       enabled: z.boolean().optional().default(true)
