@@ -131,6 +131,24 @@ canvas {
   padding-bottom: 6px;
   border-bottom: 1px solid #e8e8e8;
 }
+.todo-input-area {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.todo-input-area input {
+  flex: 1;
+  border: 1.5px solid #d0d0e8;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.todo-input-area input:focus {
+  border-color: #4caf50;
+}
 #todo-panel .todo-item {
   padding: 3px 0;
   display: flex;

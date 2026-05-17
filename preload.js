@@ -14,8 +14,12 @@ contextBridge.exposeInMainWorld('petAPI', {
   getTodos: () => ipcRenderer.invoke('get-todos'),
   toggleTodo: (id) => ipcRenderer.invoke('toggle-todo', id),
   deleteTodo: (id) => ipcRenderer.invoke('delete-todo', id),
+  addTodo: (text) => ipcRenderer.invoke('add-todo', text),
   onShowTodo: (callback) => {
     ipcRenderer.on('show-todo', () => callback());
+  },
+  onShowTodoInput: (callback) => {
+    ipcRenderer.on('show-todo-input', () => callback());
   },
   setCapture: (capture) => ipcRenderer.send('set-capture', capture)
 });

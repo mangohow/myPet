@@ -107,6 +107,14 @@ app.whenReady().then(() => {
     tray.setToolTip(petConfig.displayName || 'Coding Pet');
     const ctxMenu = Menu.buildFromTemplate([
       {
+        label: '添加TODO',
+        click: () => {
+          if (petWindow && !petWindow.isDestroyed()) {
+            petWindow.webContents.send('show-todo-input');
+          }
+        }
+      },
+      {
         label: '显示 TODO List',
         click: () => {
           if (petWindow && !petWindow.isDestroyed()) {
@@ -153,7 +161,20 @@ app.whenReady().then(() => {
     return [];
   });
 
-  // Todo toggle / delete
+  // Todo toggle / delete / add
+  ipcMain.handle('add-todo', (_event, text) => {
+    const file = path.join(getDataPath(), 'todo.json');
+    try {
+      let data = { todos: [] };
+      if (fs.existsSync(file)) {
+        data = JSON.parse(fs.readFileSync(file, 'utf-8'));
+      }
+      const todo = { id: 'todo-' + Date.now(), text, done: false, createdAt: new Date().toISOString() };
+      data.todos.push(todo);
+      fs.writeFileSync(file, JSON.stringify(data, null, 2));
+      return todo;
+    } catch (e) { return null; }
+  });
   ipcMain.handle('toggle-todo', (_event, id) => {
     const file = path.join(getDataPath(), 'todo.json');
     try {

@@ -23,6 +23,7 @@ let todoTitle = '只因任务清单';
 let sequenceQueue = [];
 let sequenceTimer = null;
 let sequenceActive = false;
+let explicitBubbleActive = false;
 
 // Load pet config from main process (handles dev/packaged paths)
 window.petAPI.getPetConfig().then(config => {
@@ -50,11 +51,13 @@ window.petAPI.getPetConfig().then(config => {
 
 function hideBubble() {
   bubble.classList.remove('show');
+  explicitBubbleActive = false;
 }
 
 function showBubble(text, duration) {
   bubble.textContent = text.length > 100 ? text.slice(0, 100) : text;
   bubble.classList.add('show');
+  explicitBubbleActive = true;
   clearTimeout(bubble._timeout);
   bubble._timeout = setTimeout(hideBubble, duration || 4000);
 }
@@ -376,7 +379,7 @@ function scheduleIdleSpeech() {
   const max = (range && range.length >= 2 ? range[1] : 60) * 1000;
   const delay = Math.random() * (max - min) + min;
   setTimeout(() => {
-    if (currentAnimName === 'idle') showRandomStateText('idle');
+    if (currentAnimName === 'idle' && !explicitBubbleActive) showRandomStateText('idle');
     scheduleIdleSpeech();
   }, delay);
 }
@@ -384,6 +387,68 @@ function scheduleIdleSpeech() {
 // Tray "Show TODO List" handler
 if (window.petAPI.onShowTodo) {
   window.petAPI.onShowTodo(() => showTodoReminder());
+}
+
+// Tray "Add TODO" handler
+function showTodoInput() {
+  window.petAPI.getTodos().then(todos => {
+    const panel = document.getElementById('todo-panel');
+    if (!panel) return;
+
+    let html = '<div class="todo-title">' + todoTitle + '</div>';
+    html += '<div class="todo-input-area"><input type="text" id="todo-input" placeholder="输入TODO，回车添加..." maxlength="100"></div>';
+    if (todos && todos.length > 0) {
+      todos.forEach(todo => {
+        const statusClass = todo.done ? 'checked' : '';
+        const itemClass = todo.done ? 'todo-item done' : 'todo-item';
+        const text = todo.text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html += `<div class="${itemClass}" data-id="${todo.id}">
+          <span class="todo-checkbox ${statusClass}"></span>
+          ${text}
+        </div>`;
+      });
+    }
+    panel.innerHTML = html;
+    panel.classList.add('show');
+
+    // Bind input events for adding TODOs
+    const input = document.getElementById('todo-input');
+    if (input) {
+      input.focus();
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && input.value.trim()) {
+          window.petAPI.addTodo(input.value.trim()).then(() => showTodoInput());
+        }
+      });
+    }
+    // Re-bind todo item events
+    bindTodoEvents(panel);
+
+    clearTimeout(panel._hideTimeout);
+    panel._hideTimeout = setTimeout(() => {
+      panel.classList.remove('show');
+      todoPanelHovered = false;
+      updateCapture();
+    }, petConfig.todoDisplayDurationMs || 12000);
+  });
+}
+
+function bindTodoEvents(panel) {
+  panel.querySelectorAll('.todo-item').forEach(el => {
+    const id = el.dataset.id;
+    el.querySelector('.todo-checkbox').addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.petAPI.toggleTodo(id).then(() => showTodoInput());
+    });
+    el.addEventListener('dblclick', (e) => {
+      if (e.target.closest('.todo-checkbox')) return;
+      window.petAPI.deleteTodo(id).then(() => showTodoInput());
+    });
+  });
+}
+
+if (window.petAPI.onShowTodoInput) {
+  window.petAPI.onShowTodoInput(() => showTodoInput());
 }
 
 // Double-click to cycle animations
