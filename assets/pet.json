@@ -59,6 +59,29 @@
       "frameDuration": 180
     }
   },
+  "pomodoro": {
+    "workMinutes": 25,
+    "breakMinutes": 5,
+    "alertDurationMs": 8000,
+    "runSpeed": 100,
+    "remindIntervalMinutes": 5,
+    "workTexts": [
+      "番茄钟开始！专注 {minutes} 分钟~",
+      "加油，已经过了 {elapsed} 分钟！",
+      "别看我，专心写代码 👀",
+      "我在陪着你呢~",
+      "快结束了，坚持就是胜利！"
+    ],
+    "breakTexts": [
+      "时间到！起来走走~ 🏀",
+      "休息 {minutes} 分钟，喝口水吧",
+      "看看窗外，放松一下眼睛"
+    ],
+    "doneTexts": [
+      "全部番茄钟完成！太强了！",
+      "今天的专注值拉满了~"
+    ]
+  },
   "stateTexts": {
     "idle": [
       "练习时长两年半，休息一会怎么了~",

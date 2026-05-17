@@ -114,6 +114,132 @@ class CronScheduler {
   }
 }
 
+// ========== Pomodoro Timer ==========
+
+class PomodoroTimer {
+  constructor(dataPath) {
+    this.dataPath = dataPath;
+    this.phase = 'idle'; // idle | work | break
+    this.round = 0;
+    this.totalRounds = 0;
+    this.timer = null;
+    this.startTime = 0;
+    this.duration = 0;
+    this.workMinutes = 25;
+    this.breakMinutes = 5;
+    this.todayCompleted = 0;
+    this._date = '';
+    this._load();
+  }
+
+  get filePath() {
+    return path.join(this.dataPath, 'pomodoro.json');
+  }
+
+  _load() {
+    try {
+      if (fs.existsSync(this.filePath)) {
+        const d = JSON.parse(fs.readFileSync(this.filePath, 'utf-8'));
+        this.todayCompleted = d.todayCompleted || 0;
+        this._date = d.date || '';
+      }
+    } catch (e) { /* ignore */ }
+    this._checkDate();
+  }
+
+  _save() {
+    try {
+      const dir = path.dirname(this.filePath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(this.filePath, JSON.stringify({ todayCompleted: this.todayCompleted, date: this._date }, null, 2));
+    } catch (e) { /* ignore */ }
+  }
+
+  _checkDate() {
+    const today = new Date().toISOString().slice(0, 10);
+    if (this._date !== today) {
+      this._date = today;
+      this.todayCompleted = 0;
+      this._save();
+    }
+  }
+
+  _send(phase, extra) {
+    if (global.petWindow && !global.petWindow.isDestroyed()) {
+      global.petWindow.webContents.send('pet-action', { name: 'pomodoro-phase', phase, ...extra });
+    }
+  }
+
+  start(workMinutes, breakMinutes, rounds) {
+    this._checkDate();
+    if (this.phase !== 'idle') {
+      this._clearTimer();
+    }
+    this.workMinutes = workMinutes || 25;
+    this.breakMinutes = breakMinutes || 5;
+    this.totalRounds = rounds || 1;
+    this.round = 0;
+    this._nextWork();
+  }
+
+  stop() {
+    if (this.phase === 'idle') return;
+    this._clearTimer();
+    this.phase = 'idle';
+    this.round = 0;
+    this._send('all-done', { text: '番茄钟已取消' });
+  }
+
+  _clearTimer() {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+  }
+
+  _nextWork() {
+    this.round++;
+    if (this.round > this.totalRounds) {
+      this.phase = 'idle';
+      this.todayCompleted++;
+      this._save();
+      this._send('all-done');
+      return;
+    }
+    this.phase = 'work';
+    this.startTime = Date.now();
+    this.duration = this.workMinutes * 60 * 1000;
+    this._send('work-start', { minutes: this.workMinutes, round: this.round, totalRounds: this.totalRounds });
+    this.timer = setTimeout(() => this._workEnd(), this.duration);
+  }
+
+  _workEnd() {
+    this.phase = 'break';
+    this.duration = this.breakMinutes * 60 * 1000;
+    this._send('work-end', { minutes: this.breakMinutes, round: this.round, totalRounds: this.totalRounds });
+    this.timer = setTimeout(() => this._breakEnd(), this.duration);
+  }
+
+  _breakEnd() {
+    this._send('break-end', { round: this.round, totalRounds: this.totalRounds });
+    this._nextWork();
+  }
+
+  getStatus() {
+    const elapsed = this.phase === 'idle' ? 0 : Date.now() - this.startTime;
+    const remaining = Math.max(0, this.duration - elapsed);
+    return {
+      phase: this.phase,
+      round: this.round,
+      totalRounds: this.totalRounds,
+      remainingSeconds: Math.round(remaining / 1000),
+      workMinutes: this.workMinutes,
+      breakMinutes: this.breakMinutes,
+      todayCompleted: this.todayCompleted
+    };
+  }
+}
+
 // ========== Tool Registration ==========
 
 function registerTools(server, petConfig) {
@@ -212,6 +338,47 @@ function registerTools(server, petConfig) {
       });
       return { content: [{ type: 'text', text: `开始播放动作序列 (${args.actions.length} 步)` }] };
     }
+  );
+}
+
+function registerPomodoroTools(server, pomodoroTimer) {
+  server.tool(
+    'start_pomodoro',
+    'Start a Pomodoro timer with configurable work/break durations',
+    {
+      workMinutes: z.number().min(1).max(120).optional().describe('Work duration in minutes. Defaults to pet.json config value.'),
+      breakMinutes: z.number().min(1).max(60).optional().describe('Break duration in minutes. Defaults to pet.json config value.'),
+      rounds: z.number().min(1).max(10).optional().describe('Number of rounds. Defaults to 1.')
+    },
+    async (args) => {
+      const workMinutes = args.workMinutes || pomodoroTimer.workMinutes;
+      const breakMinutes = args.breakMinutes || pomodoroTimer.breakMinutes;
+      const rounds = args.rounds || 1;
+      pomodoroTimer.start(workMinutes, breakMinutes, rounds);
+      const msg = rounds > 1
+        ? `番茄钟开始！${rounds} 轮，每轮专注 ${workMinutes} 分钟，休息 ${breakMinutes} 分钟`
+        : `番茄钟开始！专注 ${workMinutes} 分钟`;
+      return { content: [{ type: 'text', text: msg }] };
+    }
+  );
+
+  server.tool(
+    'stop_pomodoro',
+    'Stop the current Pomodoro timer',
+    {},
+    async () => {
+      pomodoroTimer.stop();
+      return { content: [{ type: 'text', text: '番茄钟已停止' }] };
+    }
+  );
+
+  server.tool(
+    'pomodoro_status',
+    'Get the current Pomodoro timer status',
+    {},
+    async () => ({
+      content: [{ type: 'text', text: JSON.stringify(pomodoroTimer.getStatus(), null, 2) }]
+    })
   );
 }
 
@@ -377,6 +544,8 @@ async function startMcpServer(petConfig, assetPath, dataPath) {
   scheduler.start();
   scheduleMidnightCleanup(dataPath);
 
+  const pomodoroTimer = new PomodoroTimer(dataPath);
+
   const app = express();
   const PORT = petConfig.port || 3099;
 
@@ -391,6 +560,7 @@ async function startMcpServer(petConfig, assetPath, dataPath) {
     registerTools(server, petConfig);
     registerSchedulerTools(server, scheduler);
     registerTodoTools(server, dataPath);
+    registerPomodoroTools(server, pomodoroTimer);
 
     const sessionId = transport.sessionId;
     sessions.set(sessionId, { transport, server });

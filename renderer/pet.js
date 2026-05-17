@@ -25,6 +25,11 @@ let sequenceTimer = null;
 let sequenceActive = false;
 let explicitBubbleActive = false;
 
+// Pomodoro state
+let pomodoroPhase = 'idle';
+let pomodoroRemindTimer = null;
+let pomodoroOriginalPosition = null;
+
 // Load pet config from main process (handles dev/packaged paths)
 window.petAPI.getPetConfig().then(config => {
   petConfig = config;
@@ -166,6 +171,161 @@ function playSequence(actions) {
   advanceSequence();
 }
 
+// ========== Pomodoro Helpers ==========
+
+async function movePetToCenter() {
+  pomodoroOriginalPosition = await window.petAPI.getWindowPosition();
+  const screenW = window.screen.width;
+  const winW = document.body.clientWidth;
+  const targetX = Math.round((screenW - winW) / 2);
+  const startX = pomodoroOriginalPosition.x;
+  const distance = Math.abs(targetX - startX);
+  const speed = (petConfig.pomodoro && petConfig.pomodoro.runSpeed) || 100;
+  const duration = Math.min(4000, Math.max(1000, Math.round(distance / speed * 1000)));
+  const goingRight = targetX >= startX;
+  const anim = goingRight ? 'running-right' : 'running-left';
+
+  startAnimation(anim);
+  const startTime = performance.now();
+
+  return new Promise(resolve => {
+    function step(now) {
+      const elapsed = now - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      const ease = 1 - (1 - t) * (1 - t);
+      const x = Math.round(startX + (targetX - startX) * ease);
+      window.petAPI.setWindowPosition(x, pomodoroOriginalPosition.y);
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        resolve();
+      }
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+function restorePetPosition() {
+  if (!pomodoroOriginalPosition) return Promise.resolve();
+  const targetX = pomodoroOriginalPosition.x;
+  const targetY = pomodoroOriginalPosition.y;
+  const currentX = Math.round((window.screen.width - document.body.clientWidth) / 2);
+  const distance = Math.abs(targetX - currentX);
+  const speed = (petConfig.pomodoro && petConfig.pomodoro.runSpeed) || 100;
+  const duration = Math.min(4000, Math.max(1000, Math.round(distance / speed * 1000)));
+  const goingRight = targetX >= currentX;
+  const anim = goingRight ? 'running-right' : 'running-left';
+
+  pomodoroOriginalPosition = null;
+  startAnimation(anim);
+  const startTime = performance.now();
+
+  return new Promise(resolve => {
+    function step(now) {
+      const elapsed = now - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      const ease = 1 - (1 - t) * (1 - t);
+      const x = Math.round(currentX + (targetX - currentX) * ease);
+      window.petAPI.setWindowPosition(x, targetY);
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        window.petAPI.setWindowPosition(targetX, targetY);
+        resolve();
+      }
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+function clearPomodoroRemind() {
+  if (pomodoroRemindTimer) {
+    clearInterval(pomodoroRemindTimer);
+    pomodoroRemindTimer = null;
+  }
+}
+
+function pickPomodoroText(texts, vars) {
+  if (!texts || texts.length === 0) return '';
+  let t = texts[Math.floor(Math.random() * texts.length)];
+  if (vars) {
+    for (const k in vars) t = t.replace('{' + k + '}', vars[k]);
+  }
+  return t;
+}
+
+async function handlePomodoroPhase(action) {
+  const pomo = petConfig.pomodoro || {};
+  const phase = action.phase;
+
+  switch (phase) {
+    case 'work-start': {
+      pomodoroPhase = 'work';
+      clearPomodoroRemind();
+      startAnimation(petConfig.stateMapping ? (petConfig.stateMapping.thinking || 'waiting') : 'waiting');
+      const t = pickPomodoroText(pomo.workTexts, { minutes: action.minutes, elapsed: '0' });
+      showBubble(t, 5000);
+      lastStateChangeTime = Date.now();
+
+      // Periodic encouragement
+      const remindInterval = (pomo.remindIntervalMinutes || 5) * 60 * 1000;
+      let elapsedMinutes = 0;
+      pomodoroRemindTimer = setInterval(() => {
+        elapsedMinutes += (pomo.remindIntervalMinutes || 5);
+        if (pomodoroPhase === 'work') {
+          const remind = pickPomodoroText(pomo.workTexts, { minutes: action.minutes, elapsed: elapsedMinutes });
+          showBubble(remind, 5000);
+        }
+      }, remindInterval);
+      break;
+    }
+
+    case 'work-end': {
+      pomodoroPhase = 'break';
+      clearPomodoroRemind();
+      stopSequence();
+
+      // Move to screen center for alert
+      await movePetToCenter();
+      startAnimation('jumping');
+
+      const endText = pickPomodoroText(pomo.breakTexts, { minutes: action.minutes });
+      showBubble(endText, pomo.alertDurationMs || 8000);
+
+      // After alert duration, run back to original position, then idle
+      setTimeout(async () => {
+        await restorePetPosition();
+        startAnimation('idle');
+        lastStateChangeTime = Date.now();
+      }, pomo.alertDurationMs || 8000);
+      break;
+    }
+
+    case 'break-end': {
+      pomodoroPhase = 'idle';
+      const doneText = pickPomodoroText(pomo.doneTexts) || '休息结束，继续加油！';
+      showBubble(doneText, 4000);
+      break;
+    }
+
+    case 'all-done': {
+      pomodoroPhase = 'idle';
+      clearPomodoroRemind();
+      await restorePetPosition();
+      startAnimation('jumping');
+      const allDoneText = action.text || pickPomodoroText(pomo.doneTexts) || '全部番茄钟完成！';
+      showBubble(allDoneText, 5000);
+      setTimeout(() => {
+        if (pomodoroPhase === 'idle') {
+          startAnimation('idle');
+          lastStateChangeTime = Date.now();
+        }
+      }, 5000);
+      break;
+    }
+  }
+}
+
 window.petAPI.onAction((action) => {
   if (!petConfig) return;
   if (action.name === 'set_pet_state') {
@@ -226,6 +386,8 @@ window.petAPI.onAction((action) => {
       stateTransitionTimeout = null;
     }
     playSequence(action.actions);
+  } else if (action.name === 'pomodoro-phase') {
+    handlePomodoroPhase(action);
   }
 });
 

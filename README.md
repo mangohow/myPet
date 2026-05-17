@@ -15,6 +15,7 @@
 - TODO 清单面板（右侧弹出，复选框点击切换、双击删除，>4条滚动显示）
 - 托盘「添加TODO」支持连续输入多条待办
 - Cron 定时任务调度
+- 番茄钟模式，专注结束宠物跑到屏幕中央提醒，跑回原位恢复
 - 系统托盘图标，右键菜单可添加 TODO、显示 TODO 或退出
 - 锁屏/解锁后自动恢复置顶
 - 支持任意精灵图，更换配置即可切换宠物
@@ -111,6 +112,16 @@ npm run pack
     "executing": ["..."],
     "done": ["..."],
     "error": ["..."]
+  },
+  "pomodoro": {                           // 番茄钟配置
+    "workMinutes": 25,                    //   专注时长（分钟）
+    "breakMinutes": 5,                    //   休息时长（分钟）
+    "alertDurationMs": 8000,              //   提醒持续时长（ms）
+    "runSpeed": 100,                      //   跑步速度（px/s，越小越慢）
+    "remindIntervalMinutes": 5,           //   专注中鼓励文案间隔（分钟）
+    "workTexts": ["..."],                 //   专注中随机文案
+    "breakTexts": ["..."],                //   休息提醒随机文案
+    "doneTexts": ["..."]                  //   全部完成随机文案
   }
 }
 ```
@@ -140,6 +151,9 @@ npm run pack
 | `list_scheduled_tasks` | 列出所有定时任务 | 无参数 |
 | `add_scheduled_task` | 添加 cron 定时任务 | `cron`: cron 表达式, `action`: 要执行的动作, `name`(可选), `enabled`(可选) |
 | `delete_scheduled_task` | 删除定时任务 | `id`: 任务 ID |
+| `start_pomodoro` | 启动番茄钟 | `workMinutes`(可选), `breakMinutes`(可选), `rounds`(可选) |
+| `stop_pomodoro` | 停止番茄钟 | 无参数 |
+| `pomodoro_status` | 查询番茄钟状态 | 无参数，返回阶段、剩余时间、已完成轮数 |
 | `add_todo` | 添加 TODO 项 | `text`: TODO 内容 |
 | `list_todos` | 查询 TODO 列表 | `filter`: all/pending/done（可选，默认 all） |
 | `mark_todo_done` | 标记 TODO 完成 | `id`: TODO ID |
