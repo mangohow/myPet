@@ -388,6 +388,17 @@ window.petAPI.onAction((action) => {
     playSequence(action.actions);
   } else if (action.name === 'pomodoro-phase') {
     handlePomodoroPhase(action);
+  } else if (action.name === 'goodbye') {
+    const goodbyeAnim = (petConfig.pomodoro && petConfig.pomodoro.goodbyeAnimation) || 'waving';
+    const goodbyeText = (petConfig.pomodoro && petConfig.pomodoro.goodbyeText) || '再见啦~ 下次再聊！';
+    stopSequence();
+    if (stateTransitionTimeout) {
+      clearTimeout(stateTransitionTimeout);
+      stateTransitionTimeout = null;
+    }
+    startAnimation(goodbyeAnim);
+    showBubble(goodbyeText, 3500);
+    lastStateChangeTime = Date.now();
   }
 });
 

@@ -80,7 +80,9 @@
     "doneTexts": [
       "全部番茄钟完成！太强了！",
       "今天的专注值拉满了~"
-    ]
+    ],
+    "goodbyeAnimation": "waving",
+    "goodbyeText": "再见啦~ 下次再聊！"
   },
   "stateTexts": {
     "idle": [

@@ -9,6 +9,7 @@ let tray = null;
 let ignoreMouseEvents = true;
 let petConfig = null;
 let alwaysOnTopInterval = null;
+let isQuitting = false;
 
 // Set early to prevent Windows from creating a default notification icon
 app.setAppUserModelId('coding.pet.ikun');
@@ -26,6 +27,19 @@ function loadPetConfig() {
   const cfg = JSON.parse(fs.readFileSync(path.join(base, 'pet.json'), 'utf-8'));
   cfg._spritesheetUrl = url.pathToFileURL(path.join(base, cfg.spritesheetPath)).href;
   return cfg;
+}
+
+function gracefulQuit() {
+  if (isQuitting) return;
+  isQuitting = true;
+  if (petWindow && !petWindow.isDestroyed()) {
+    petWindow.webContents.send('pet-action', { name: 'goodbye' });
+    setTimeout(() => {
+      app.quit();
+    }, 3500);
+  } else {
+    app.quit();
+  }
 }
 
 function toggleMousePassthrough() {
@@ -89,6 +103,14 @@ app.whenReady().then(() => {
     }
   });
 
+  // Intercept window close to show goodbye animation
+  petWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      gracefulQuit();
+    }
+  });
+
   global.petWindow = petWindow;
 
   // Periodically re-assert always-on-top to prevent other apps from burying the pet
@@ -125,7 +147,7 @@ app.whenReady().then(() => {
       { type: 'separator' },
       {
         label: '退出',
-        click: () => { app.quit(); }
+        click: () => { gracefulQuit(); }
       }
     ]);
     tray.setContextMenu(ctxMenu);
